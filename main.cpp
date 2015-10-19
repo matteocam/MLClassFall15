@@ -11,7 +11,7 @@ private:
 
 public:
     static int seed[2];
-    static float setSeed(int x0, int x1)
+    static void setSeed(int x0, int x1)
     {
         seed[0] = x0;
         seed[1] = x1;
@@ -69,6 +69,8 @@ public:
         Point *newPoint = new Point(N);
         for (int i = 0; i < N; i++)
             newPoint->components.push_back(UnifGen::getUnifNum());  // XXX: Should be arbitrary random fun here
+
+        return newPoint;
     }
 
     float getDistance(const Point &p) const
@@ -126,7 +128,7 @@ class RandomPointSet
 
     const PointSeq &getPoints()
     {
-
+        return points;
     }
 
 };
@@ -151,7 +153,7 @@ public:
         UnifGen::setSeed(seed0,seed1); // XXX
         pointSet = new RandomPointSet(K, N);
 
-        PointSeq points = pointSet->getPoints();
+        cout << pointSet;
 
     }
 
