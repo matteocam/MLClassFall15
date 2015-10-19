@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cassert>
+#include <vector>
 using namespace std;
 
 class UnifGen
@@ -43,55 +44,102 @@ enum DistanceType
     Euclidean
 };
 
+
+enum RandomGenType
+{
+
+};
+
 class Point
 {
 public:
+    Point () {}
     Point(int N) { }
+
+
     // XXX: Who deletes this?
-    static Point *mkRandomPoint(int N)
+    static const Point *mkRandomPoint(int N)
     {
         return nullptr; // XXX
     }
 
-    float getDistance(const Point &p)
+    float getDistance(const Point &p) const
     {
         return 0; // XXX
     }
 
 };
 
+typedef vector<const Point *> PointSeq;
+
 class RandomPointSet
 {
+    private:
+    PointSeq points;
+    int N, K;
+
     public:
-    RandomPointSet(int K, int N)
+    RandomPointSet(int _K, int _N)
     {
+        K = _K;
+        N = _N;
+
+        for (int i = 0; i < K; i++)
+        {
+            auto pt = Point::mkRandomPoint(N);
+            points.push_back(pt);
+        }
     }
 
-    const Point &getClosestPoint(const Point &p)
+    const Point &getClosestPoint(const Point &p) const
     {
 
     }
 
-    const Point &getFarthestPoint(const Point &p)
+    const Point &getFarthestPoint(const Point &p) const
+    {
+
+    }
+
+    const PointSeq &getPoints()
     {
 
     }
 
 };
 
-class Exp1Program
+class Exp1Simulation
 {
 private:
     RandomPointSet *pointSet = nullptr;
 public:
     // NOTE: At some point you may want to variate on K and N and distance function
-    Exp1Program(int seed0, int seed1, int K, int N)
+    Exp1Simulation(int seed0, int seed1, int K, int N)
     {
-        UnifGen::setSeed(seed0,seed1);
+        UnifGen::setSeed(seed0,seed1); // XXX
         pointSet = new RandomPointSet(K, N);
     }
 
-    // Some plotting methods here
+    ~Exp1Simulation()
+    {
+        //delete pointSet;
+    }
+
+    float getAverageRatioDist()
+    {
+        auto points = pointSet->getPoints();
+        for (const Point *pPoint : points)
+        {
+            auto closestPoint = pointSet->getClosestPoint(*pPoint);
+            auto farthestPoint = pointSet->getFarthestPoint(*pPoint);
+
+            float distClosest = pPoint->getDistance(closestPoint);
+            float distFarthest = pPoint->getDistance(farthestPoint);
+
+            return distClosest / distFarthest;
+        }
+    }
+
 
 };
 
@@ -105,7 +153,10 @@ int main(int argc, char **argv)
         cerr << "Unimplemented\n!";
     }
 
-    Exp1Program exp1(1, 1, K, N);
+    // Set seed
+
+
+    Exp1Simulation exp1(1, 1, K, N);
 
 
     return 0;
