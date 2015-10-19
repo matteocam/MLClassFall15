@@ -52,23 +52,43 @@ enum RandomGenType
 
 class Point
 {
+private:
+    int N;
+
 public:
-    Point () {}
-    Point(int N) { }
+    vector <float> components;
+
+    friend ostream& operator<<(ostream& os, const Point& pt);
+
+    Point(int _N) : N(_N) { }
 
 
     // XXX: Who deletes this?
     static const Point *mkRandomPoint(int N)
     {
-        return nullptr; // XXX
+        Point *newPoint = new Point(N);
+        for (int i = 0; i < N; i++)
+            newPoint->components.push_back(UnifGen::getUnifNum());  // XXX: Should be arbitrary random fun here
     }
 
     float getDistance(const Point &p) const
     {
-        return 0; // XXX
+        assert(0); // XXX
     }
 
 };
+
+ostream& operator<<(ostream& os, const Point& pt)
+{
+    os << "Point(";
+    for (int i = 0; i < pt.N; i++) {
+        if (i > 0)
+            os << ", ";
+        os << pt.components[i] ;
+    }
+    os << ")";
+    return os;
+}
 
 typedef vector<const Point *> PointSeq;
 
@@ -79,6 +99,9 @@ class RandomPointSet
     int N, K;
 
     public:
+
+    friend ostream& operator<<(ostream& os, const RandomPointSet& pt);
+
     RandomPointSet(int _K, int _N)
     {
         K = _K;
@@ -108,6 +131,15 @@ class RandomPointSet
 
 };
 
+ostream& operator<<(ostream& os, const RandomPointSet& ptSet)
+{
+    os << "PointSeq:" << endl;
+    for (int i = 0; i < ptSet.K; i++) {
+        os << "P" << i << ": " << *(ptSet.points[i]) << endl;
+    }
+    return os;
+}
+
 class Exp1Simulation
 {
 private:
@@ -118,11 +150,14 @@ public:
     {
         UnifGen::setSeed(seed0,seed1); // XXX
         pointSet = new RandomPointSet(K, N);
+
+        PointSeq points = pointSet->getPoints();
+
     }
 
     ~Exp1Simulation()
     {
-        //delete pointSet;
+        delete pointSet;
     }
 
     float getAverageRatioDist()
@@ -147,7 +182,7 @@ int main(int argc, char **argv)
 {
     int N, K;
     if (argc < 3) { // Use default
-        N = 1;
+        N = 2;
         K = 2;
     } else {
         cerr << "Unimplemented\n!";
