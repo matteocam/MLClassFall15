@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cstdlib>
+#include <cassert>
 using namespace std;
 
 class UnifGen
@@ -14,16 +16,19 @@ public:
         seed[1] = x1;
     }
 
-    static float getUnifNum(int x[])
+    static float getUnifNum()
     {
 
         long long  j,k,a=1999,b=4444,c=2147483647;
 
-        j=a*x[0]+b*x[1];
+        j=a*seed[0]+b*seed[1];
         k=j-c*(int)(j/c);
-        x[1]=x[0];
-        x[0]=(int)k;
-        return (float)(k)/2147483647.f;
+        seed[1]=seed[0];
+        seed[0]=(int)k;
+        float res =  (float)(k)/2147483647.f;
+
+        assert (res > 0 && res < 1);
+        return res;
     }
 
 };
@@ -33,14 +38,26 @@ int UnifGen::seed[2];
 // N is the dimension of the space
 // K is the number of points
 
+enum DistanceType
+{
+    Euclidean
+};
+
 class Point
 {
-    public:
-    Point(int N);
+public:
+    Point(int N) { }
     // XXX: Who deletes this?
     static Point *mkRandomPoint(int N)
     {
+        return nullptr; // XXX
     }
+
+    float getDistance(const Point &p)
+    {
+        return 0; // XXX
+    }
+
 };
 
 class RandomPointSet
@@ -49,6 +66,32 @@ class RandomPointSet
     RandomPointSet(int K, int N)
     {
     }
+
+    const Point &getClosestPoint(const Point &p)
+    {
+
+    }
+
+    const Point &getFarthestPoint(const Point &p)
+    {
+
+    }
+
+};
+
+class Exp1Program
+{
+private:
+    RandomPointSet *pointSet = nullptr;
+public:
+    // NOTE: At some point you may want to variate on K and N and distance function
+    Exp1Program(int seed0, int seed1, int K, int N)
+    {
+        UnifGen::setSeed(seed0,seed1);
+        pointSet = new RandomPointSet(K, N);
+    }
+
+    // Some plotting methods here
 
 };
 
@@ -62,8 +105,7 @@ int main(int argc, char **argv)
         cerr << "Unimplemented\n!";
     }
 
-    UnifGen::setSeed(1,1);
-    RandomPointSet pointSet(K, N);
+    Exp1Program exp1(1, 1, K, N);
 
 
     return 0;
