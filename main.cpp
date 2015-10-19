@@ -2,6 +2,8 @@
 #include <cstdlib>
 #include <cassert>
 #include <vector>
+#include <iomanip>
+#include <cmath>
 using namespace std;
 
 class UnifGen
@@ -67,15 +69,32 @@ public:
     static const Point *mkRandomPoint(int N)
     {
         Point *newPoint = new Point(N);
-        for (int i = 0; i < N; i++)
-            newPoint->components.push_back(UnifGen::getUnifNum());  // XXX: Should be arbitrary random fun here
+        for (int i = 0; i < N; i++) {
+            float value = UnifGen::getUnifNum();
+            newPoint->components.push_back(value);  // XXX: Should be arbitrary random fun here
+        }
 
         return newPoint;
     }
 
-    float getDistance(const Point &p) const
+    float getDistance(const Point &p, DistanceType distType) const
     {
-        assert(0); // XXX
+        switch(distType) {
+            case DistanceType::Euclidean:
+                return getEuclDistance(p);
+                break;
+
+        };
+    }
+
+    float getEuclDistance(const Point &p) const
+    {
+        float sumOfSquareDiffs = 0.0;
+        for (int i = 0; i < N; i++)
+        {
+            sumOfSquareDiffs += (components[i]-p.components[i])*(components[i]-p.components[i]);
+        }
+        return sqrt(sumOfSquareDiffs);
     }
 
 };
@@ -116,12 +135,12 @@ class RandomPointSet
         }
     }
 
-    const Point &getClosestPoint(const Point &p) const
+    const Point &getClosestPoint(const Point &p, DistanceType distType) const
     {
 
     }
 
-    const Point &getFarthestPoint(const Point &p) const
+    const Point &getFarthestPoint(const Point &p, DistanceType distType) const
     {
 
     }
@@ -137,7 +156,7 @@ ostream& operator<<(ostream& os, const RandomPointSet& ptSet)
 {
     os << "PointSeq:" << endl;
     for (int i = 0; i < ptSet.K; i++) {
-        os << "P" << i << ": " << *(ptSet.points[i]) << endl;
+        os << "\tP" << i << ": " << *(ptSet.points[i]) << endl;
     }
     return os;
 }
@@ -153,8 +172,6 @@ public:
         UnifGen::setSeed(seed0,seed1); // XXX
         pointSet = new RandomPointSet(K, N);
 
-        cout << pointSet;
-
     }
 
     ~Exp1Simulation()
@@ -162,16 +179,16 @@ public:
         delete pointSet;
     }
 
-    float getAverageRatioDist()
+    float getAverageRatioDist(DistanceType distType)
     {
         auto points = pointSet->getPoints();
         for (const Point *pPoint : points)
         {
-            auto closestPoint = pointSet->getClosestPoint(*pPoint);
-            auto farthestPoint = pointSet->getFarthestPoint(*pPoint);
+            auto closestPoint = pointSet->getClosestPoint(*pPoint, distType);
+            auto farthestPoint = pointSet->getFarthestPoint(*pPoint, distType);
 
-            float distClosest = pPoint->getDistance(closestPoint);
-            float distFarthest = pPoint->getDistance(farthestPoint);
+            float distClosest = pPoint->getDistance(closestPoint, distType);
+            float distFarthest = pPoint->getDistance(farthestPoint, distType);
 
             return distClosest / distFarthest;
         }
@@ -185,10 +202,14 @@ int main(int argc, char **argv)
     int N, K;
     if (argc < 3) { // Use default
         N = 2;
-        K = 2;
+        K = 3;
     } else {
         cerr << "Unimplemented\n!";
     }
+
+    // Set output params
+    cout << fixed;
+    cout << setprecision(4);
 
     // Set seed
 
