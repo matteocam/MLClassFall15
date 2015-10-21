@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cassert>
 #include <vector>
+#include <algorithm>
 #include <iomanip>
 #include <cmath>
 using namespace std;
@@ -52,6 +53,19 @@ enum RandomGenType
 
 };
 
+
+const float REL_EPSILON = 0.00001;
+
+bool AlmostEqualRelative(float A, float B, float maxRelativeError)
+{
+    if (A == B)
+        return true;
+    float relativeError = fabs((A - B) / B);
+    if (relativeError <= maxRelativeError)
+        return true;
+    return false;
+}
+
 class Point
 {
 private:
@@ -59,10 +73,20 @@ private:
 
 public:
     vector <float> components;
+    int label;
 
     friend ostream& operator<<(ostream& os, const Point& pt);
 
-    Point(int _N) : N(_N) { }
+    bool operator== (const Point &cP2) const
+    {
+        for (int i = 0; i < N; i++) {
+            if (!AlmostEqualRelative(components[i], cP2.components[i], REL_EPSILON))
+                return false;
+        }
+        return true;
+    }
+
+    Point(int _N) : N(_N), label(-1) { }
 
 
     // XXX: Who deletes this?
@@ -71,8 +95,10 @@ public:
         Point *newPoint = new Point(N);
         for (int i = 0; i < N; i++) {
             float value = UnifGen::getUnifNum();
-            newPoint->components.push_back(value);  // XXX: Should be arbitrary random fun here
+            newPoint->components.push_back(value);  // XXX: Should be arbitrary random function here (instead of unif. only)
         }
+
+        newPoint->label = (UnifGen::getUnifNum() < .5);
 
         return newPoint;
     }
@@ -107,11 +133,18 @@ ostream& operator<<(ostream& os, const Point& pt)
             os << ", ";
         os << pt.components[i] ;
     }
-    os << ")";
+    os << ") - Class: " << pt.label << ".";
     return os;
 }
 
 typedef vector<const Point *> PointSeq;
+
+
+// We compare (distance, point) pairs by distance
+bool compare(const pair<float,const Point *>&i, const pair<float,const Point *>&j)
+{
+    return i.first > j.first;
+}
 
 class RandomPointSet
 {
@@ -133,16 +166,53 @@ class RandomPointSet
             auto pt = Point::mkRandomPoint(N);
             points.push_back(pt);
         }
+
+        for (int i = 0; i < K; i++) {
+            cout << "Closest point to " << *points[i] << ":\n";
+            auto closestPoint = getClosestPoint(*points[i], DistanceType::Euclidean);
+            cout << closestPoint << endl;
+
+            cout << "Farthest point to " << *points[i] << ":\n";
+            auto farthestPoint = getFarthestPoint(*points[i], DistanceType::Euclidean);
+            cout << farthestPoint << endl;
+
+        }
     }
 
     const Point &getClosestPoint(const Point &p, DistanceType distType) const
     {
+        // For all points different from p, save point and distance in a pair and then grab the min
+        vector<pair<float, const Point *>> distancePoints;
 
+        // XXX: How do we check that it's not the same point? (we check for equality)
+        for (const Point *p1 : points) {
+            if (*p1 == p) {
+                // Do nothing
+            } else {
+                distancePoints.push_back(make_pair(p.getDistance(*p1, distType), p1));
+            }
+        }
+
+        auto closestPoint = *min_element(distancePoints.begin(),distancePoints.end());
+        return *closestPoint.second;
     }
 
     const Point &getFarthestPoint(const Point &p, DistanceType distType) const
     {
+        // For all points different from p, save point and distance in a pair and then grab the min
+        vector<pair<float, const Point *>> distancePoints;
 
+        // XXX: How do we check that it's not the same point? (we check for equality)
+        for (const Point *p1 : points) {
+            if (*p1 == p) {
+                // Do nothing
+            } else {
+                distancePoints.push_back(make_pair(p.getDistance(*p1, distType), p1));
+            }
+        }
+
+        auto farthestPoint = *max_element(distancePoints.begin(),distancePoints.end());
+        return *farthestPoint.second;
     }
 
     const PointSeq &getPoints()
@@ -171,6 +241,8 @@ public:
     {
         UnifGen::setSeed(seed0,seed1); // XXX
         pointSet = new RandomPointSet(K, N);
+
+        cout << *pointSet;
 
     }
 
@@ -201,7 +273,7 @@ int main(int argc, char **argv)
 {
     int N, K;
     if (argc < 3) { // Use default
-        N = 2;
+        N = 1;
         K = 3;
     } else {
         cerr << "Unimplemented\n!";
