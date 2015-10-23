@@ -1,5 +1,8 @@
 #include <iostream>
+#include <string>
+#include <fstream>
 #include <cstdlib>
+#include <ctime>
 #include <cassert>
 #include <vector>
 #include <algorithm>
@@ -46,6 +49,19 @@ enum DistanceType
 {
     Euclidean
 };
+
+string distanceType2str(DistanceType dt)
+{
+    switch(dt)
+    {
+        case DistanceType::Euclidean:
+            return "Euclidean";
+            break;
+        default:
+            assert(0);
+
+    };
+}
 
 
 enum RandomGenType
@@ -109,6 +125,9 @@ public:
             case DistanceType::Euclidean:
                 return getEuclDistance(p);
                 break;
+            default:
+                assert(0); // You should never get here
+                return -1;
 
         };
     }
@@ -156,6 +175,8 @@ class RandomPointSet
 
     friend ostream& operator<<(ostream& os, const RandomPointSet& pt);
 
+    int getK() const { return K; }
+
     RandomPointSet(int _K, int _N)
     {
         K = _K;
@@ -167,6 +188,7 @@ class RandomPointSet
             points.push_back(pt);
         }
 
+    /*
         for (int i = 0; i < K; i++) {
             cout << "Closest point to " << *points[i] << ":\n";
             auto closestPoint = getClosestPoint(*points[i], DistanceType::Euclidean);
@@ -177,6 +199,7 @@ class RandomPointSet
             cout << farthestPoint << endl;
 
         }
+    */
     }
 
     const Point &getClosestPoint(const Point &p, DistanceType distType) const
@@ -236,13 +259,15 @@ class Exp1Simulation
 private:
     RandomPointSet *pointSet = nullptr;
 public:
+    static int stdSeed0, stdSeed1;
+
     // NOTE: At some point you may want to variate on K and N and distance function
     Exp1Simulation(int seed0, int seed1, int K, int N)
     {
         UnifGen::setSeed(seed0,seed1); // XXX
         pointSet = new RandomPointSet(K, N);
 
-        cout << *pointSet;
+        //cout << *pointSet;
 
     }
 
@@ -254,6 +279,8 @@ public:
     float getAverageRatioDist(DistanceType distType)
     {
         auto points = pointSet->getPoints();
+        float sumDists = 0.0;
+
         for (const Point *pPoint : points)
         {
             auto closestPoint = pointSet->getClosestPoint(*pPoint, distType);
@@ -262,32 +289,76 @@ public:
             float distClosest = pPoint->getDistance(closestPoint, distType);
             float distFarthest = pPoint->getDistance(farthestPoint, distType);
 
-            return distClosest / distFarthest;
+            sumDists += (distClosest / distFarthest);
         }
+        return sumDists / pointSet->getK();
+    }
+
+    void logResults(ofstream &outFile)
+    {
+
+    }
+
+    void static runFullExperiment()
+    {
+        // Setup seed
+        Exp1Simulation::stdSeed0 = Exp1Simulation::stdSeed1 = time(NULL);
+
+        // Setup sets of variables
+        // K, DistanceType
+        vector<int> Ks;
+        Ks.push_back(100);
+        Ks.push_back(1000);
+        vector<DistanceType> distanceTypes;
+        distanceTypes.push_back(DistanceType::Euclidean);
+        // XXX: Set them up
+
+        // Main Loop
+        for (int K : Ks) {
+            for (DistanceType dType : distanceTypes) {
+                runOneExperiment(K, dType);
+            }
+        }
+    }
+
+    void static runOneExperiment(int K, DistanceType dType)
+    {
+        // Make new file
+        string fn = "exp1-data-" + to_string(K) + "-" + distanceType2str(dType);
+        ofstream out(fn);
+
+        // Prepare Ns
+        vector<int> Ns;
+        for (int i = 1; i <= 10; i++)
+            Ns.push_back(i);
+        for (int i = 20; i <= 100; i += 10)
+            Ns.push_back(i);
+
+        // Produce and log results for each N
+        for (int N : Ns)
+        {
+            Exp1Simulation exp1(Exp1Simulation::stdSeed0, Exp1Simulation::stdSeed1, K, N);
+            out << exp1.getAverageRatioDist(dType) << endl;
+        }
+
+        // Close the file
+        out.close();
     }
 
 
 };
 
+int Exp1Simulation::stdSeed0, Exp1Simulation::stdSeed1;
+
 int main(int argc, char **argv)
 {
-    int N, K;
-    if (argc < 3) { // Use default
-        N = 1;
-        K = 3;
-    } else {
-        cerr << "Unimplemented\n!";
-    }
 
     // Set output params
     cout << fixed;
     cout << setprecision(4);
 
     // Set seed
-
-
-    Exp1Simulation exp1(1, 1, K, N);
-
+    Exp1Simulation::runFullExperiment();
 
     return 0;
 }
