@@ -338,7 +338,7 @@ public:
         for (int N : Ns)
         {
             Exp1Simulation exp1(Exp1Simulation::stdSeed0, Exp1Simulation::stdSeed1, K, N);
-            out << exp1.getAverageRatioDist(dType) << endl;
+            out << N << " " << exp1.getAverageRatioDist(dType) << endl;
         }
 
         // Close the file
