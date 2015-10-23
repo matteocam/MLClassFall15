@@ -254,17 +254,47 @@ ostream& operator<<(ostream& os, const RandomPointSet& ptSet)
     return os;
 }
 
+struct Observation
+{
+    int N, K;
+    DistanceType distType;
+    float obsVal;
+
+    Observation(int _N, int _K, DistanceType _distType, float _obsVal) :
+        N(_N), K(_K), distType(_distType), obsVal(_obsVal)
+    {
+    }
+
+    static string header()
+    {
+        return "N\tK\tDistanceType\tr\n";
+    }
+
+    friend ostream& operator<<(ostream& os, const Observation& obs);
+
+};
+
+ostream& operator<<(ostream& os, const Observation& obs)
+{
+    os << obs.N << "\t" << obs.K << "\t" <<
+        distanceType2str(obs.distType) << "\t" <<
+        obs.obsVal << endl;
+    return os;
+}
+
 class Exp1Simulation
 {
 private:
     RandomPointSet *pointSet = nullptr;
 public:
     static int stdSeed0, stdSeed1;
+    int N, K;
+    ofstream &out;
 
     // NOTE: At some point you may want to variate on K and N and distance function
-    Exp1Simulation(int seed0, int seed1, int K, int N)
+    Exp1Simulation(int _K, int _N, ofstream &_out) :
+        N(_N), K(_K), out(_out)
     {
-        UnifGen::setSeed(seed0,seed1); // XXX
         pointSet = new RandomPointSet(K, N);
 
         //cout << *pointSet;
@@ -276,10 +306,10 @@ public:
         delete pointSet;
     }
 
-    float getAverageRatioDist(DistanceType distType)
+    void gatherObservations(DistanceType distType)
     {
         auto points = pointSet->getPoints();
-        float sumDists = 0.0;
+        //float sumDists = 0.0;
 
         for (const Point *pPoint : points)
         {
@@ -289,9 +319,10 @@ public:
             float distClosest = pPoint->getDistance(closestPoint, distType);
             float distFarthest = pPoint->getDistance(farthestPoint, distType);
 
-            sumDists += (distClosest / distFarthest);
+            out << Observation(N, K, distType, distClosest / distFarthest);
+            //sumDists += (distClosest / distFarthest);
         }
-        return sumDists / pointSet->getK();
+        //return sumDists / pointSet->getK();
     }
 
     void logResults(ofstream &outFile)
@@ -303,6 +334,7 @@ public:
     {
         // Setup seed
         Exp1Simulation::stdSeed0 = Exp1Simulation::stdSeed1 = time(NULL);
+        UnifGen::setSeed(stdSeed0,stdSeed1); // XXX
 
         // Setup sets of variables
         // K, DistanceType
@@ -313,19 +345,26 @@ public:
         distanceTypes.push_back(DistanceType::Euclidean);
         // XXX: Set them up
 
+        // Set logging file
+        string fn = "exp1-analysis.dat";
+        ofstream out(fn);
+        out << Observation::header();
+
         // Main Loop
         for (int K : Ks) {
             for (DistanceType dType : distanceTypes) {
-                runOneExperiment(K, dType);
+                runOneExperiment(K, dType, out);
             }
         }
+
+        out.close();
     }
 
-    void static runOneExperiment(int K, DistanceType dType)
+    void static runOneExperiment(int K, DistanceType dType, ofstream &out)
     {
         // Make new file
-        string fn = "exp1-data-" + to_string(K) + "-" + distanceType2str(dType);
-        ofstream out(fn);
+        //string fn = "exp1-data-" + to_string(K) + "-" + distanceType2str(dType);
+        //ofstream out(fn);
 
         // Prepare Ns
         vector<int> Ns;
@@ -337,12 +376,10 @@ public:
         // Produce and log results for each N
         for (int N : Ns)
         {
-            Exp1Simulation exp1(Exp1Simulation::stdSeed0, Exp1Simulation::stdSeed1, K, N);
-            out << N << " " << exp1.getAverageRatioDist(dType) << endl;
+            Exp1Simulation exp1(K, N, out);
+            exp1.gatherObservations(dType);
         }
 
-        // Close the file
-        out.close();
     }
 
 
