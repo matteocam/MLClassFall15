@@ -256,18 +256,18 @@ ostream& operator<<(ostream& os, const RandomPointSet& ptSet)
 
 struct Observation
 {
-    int N, K;
+    int K, N;
     DistanceType distType;
     float obsVal;
 
-    Observation(int _N, int _K, DistanceType _distType, float _obsVal) :
-        N(_N), K(_K), distType(_distType), obsVal(_obsVal)
+    Observation(int _K, int _N, DistanceType _distType, float _obsVal) :
+        K(_K), N(_N), distType(_distType), obsVal(_obsVal)
     {
     }
 
     static string header()
     {
-        return "N\tK\tDistanceType\tr\n";
+        return "K\tN\tDistanceType\tr\n";
     }
 
     friend ostream& operator<<(ostream& os, const Observation& obs);
@@ -276,7 +276,7 @@ struct Observation
 
 ostream& operator<<(ostream& os, const Observation& obs)
 {
-    os << obs.N << "\t" << obs.K << "\t" <<
+    os << obs.K << "\t" << obs.N << "\t" <<
         distanceType2str(obs.distType) << "\t" <<
         obs.obsVal << endl;
     return os;
@@ -288,12 +288,12 @@ private:
     RandomPointSet *pointSet = nullptr;
 public:
     static int stdSeed0, stdSeed1;
-    int N, K;
+    int K, N;
     ofstream &out;
 
     // NOTE: At some point you may want to variate on K and N and distance function
     Exp1Simulation(int _K, int _N, ofstream &_out) :
-        N(_N), K(_K), out(_out)
+        K(_K), N(_N), out(_out)
     {
         pointSet = new RandomPointSet(K, N);
 
@@ -319,7 +319,7 @@ public:
             float distClosest = pPoint->getDistance(closestPoint, distType);
             float distFarthest = pPoint->getDistance(farthestPoint, distType);
 
-            out << Observation(N, K, distType, distClosest / distFarthest);
+            out << Observation(K, N, distType, distClosest / distFarthest);
             //sumDists += (distClosest / distFarthest);
         }
         //return sumDists / pointSet->getK();
@@ -339,8 +339,10 @@ public:
         // Setup sets of variables
         // K, DistanceType
         vector<int> Ks;
-        Ks.push_back(100);
         Ks.push_back(1000);
+        Ks.push_back(10000);
+        Ks.push_back(100000);
+        //Ks.push_back(1000);
         vector<DistanceType> distanceTypes;
         distanceTypes.push_back(DistanceType::Euclidean);
         // XXX: Set them up
