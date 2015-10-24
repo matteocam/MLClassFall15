@@ -47,7 +47,9 @@ int UnifGen::seed[2];
 
 enum DistanceType
 {
-    Euclidean
+    Euclidean,
+    CityBlock,
+    Max
 };
 
 string distanceType2str(DistanceType dt)
@@ -56,6 +58,12 @@ string distanceType2str(DistanceType dt)
     {
         case DistanceType::Euclidean:
             return "Euclidean";
+            break;
+        case DistanceType::CityBlock:
+            return "CityBlock";
+            break;
+        case DistanceType::Max:
+            return "Max";
             break;
         default:
             assert(0);
@@ -125,6 +133,12 @@ public:
             case DistanceType::Euclidean:
                 return getEuclDistance(p);
                 break;
+            case DistanceType::CityBlock:
+                return getCityBlockDistance(p);
+                break;
+            case DistanceType::Max:
+                return getMaxDistance(p);
+                break;
             default:
                 assert(0); // You should never get here
                 return -1;
@@ -140,6 +154,28 @@ public:
             sumOfSquareDiffs += (components[i]-p.components[i])*(components[i]-p.components[i]);
         }
         return sqrt(sumOfSquareDiffs);
+    }
+
+    float getCityBlockDistance(const Point &p) const
+    {
+        float sumOfAbsDiffs = 0.0;
+        for (int i = 0; i < N; i++)
+        {
+            sumOfAbsDiffs += fabs(components[i]-p.components[i]);
+        }
+        return sumOfAbsDiffs;
+    }
+
+    float getMaxDistance(const Point &p) const
+    {
+        vector<float> absDiffs;
+        for (int i = 0; i < N; i++)
+        {
+            absDiffs.push_back(fabs(components[i]-p.components[i]));
+        }
+        float maxDiff = *max_element(absDiffs.begin(), absDiffs.end());
+        return maxDiff;
+
     }
 
 };
@@ -311,6 +347,7 @@ public:
         auto points = pointSet->getPoints();
         //float sumDists = 0.0;
 
+        // XXX: O(K^2) algorithm!
         for (const Point *pPoint : points)
         {
             auto closestPoint = pointSet->getClosestPoint(*pPoint, distType);
@@ -340,11 +377,14 @@ public:
         // K, DistanceType
         vector<int> Ks;
         Ks.push_back(1000);
+        Ks.push_back(5000);
         Ks.push_back(10000);
-        Ks.push_back(100000);
+        //Ks.push_back(20000);
         //Ks.push_back(1000);
         vector<DistanceType> distanceTypes;
         distanceTypes.push_back(DistanceType::Euclidean);
+        distanceTypes.push_back(DistanceType::CityBlock);
+        distanceTypes.push_back(DistanceType::Max);
         // XXX: Set them up
 
         // Set logging file
@@ -378,12 +418,13 @@ public:
         // Produce and log results for each N
         for (int N : Ns)
         {
+            cout << "Working on experiment for K = " << K << ", N = "
+                 << N << " and DistanceType = " << distanceType2str(dType) << endl;
             Exp1Simulation exp1(K, N, out);
             exp1.gatherObservations(dType);
         }
 
     }
-
 
 };
 
