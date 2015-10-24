@@ -8,7 +8,11 @@
 #include <algorithm>
 #include <iomanip>
 #include <cmath>
+#include <random>
 using namespace std;
+
+mt19937 *mt;
+
 
 class UnifGen
 {
@@ -25,7 +29,11 @@ public:
 
     static float getUnifNum()
     {
+        uniform_real_distribution<float> unifDist(0.0, 1.0);
+        float res = unifDist(*mt);
 
+
+        /*
         long long  j,k,a=1999,b=4444,c=2147483647;
 
         j=a*seed[0]+b*seed[1];
@@ -33,8 +41,9 @@ public:
         seed[1]=seed[0];
         seed[0]=(int)k;
         float res =  (float)(k)/2147483647.f;
+        * */
 
-        assert (res > 0 && res < 1);
+        assert (res >= 0 && res <= 1);
         return res;
     }
 
@@ -377,8 +386,9 @@ public:
         // K, DistanceType
         vector<int> Ks;
         Ks.push_back(1000);
-        Ks.push_back(5000);
-        Ks.push_back(10000);
+        //Ks.push_back(2000);
+        //Ks.push_back(5000);
+        //Ks.push_back(10000);
         //Ks.push_back(20000);
         //Ks.push_back(1000);
         vector<DistanceType> distanceTypes;
@@ -432,6 +442,9 @@ int Exp1Simulation::stdSeed0, Exp1Simulation::stdSeed1;
 
 int main(int argc, char **argv)
 {
+    // Set randomness
+    random_device rd;
+    mt = new mt19937(rd());
 
     // Set output params
     cout << fixed;
