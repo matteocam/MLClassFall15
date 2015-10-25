@@ -11,6 +11,9 @@
 #include <random>
 using namespace std;
 
+#define EXP1
+
+
 mt19937 *mt;
 
 
@@ -44,6 +47,13 @@ public:
         * */
 
         assert (res >= 0 && res <= 1);
+        return res;
+    }
+
+    static float getNormalNum()
+    {
+        std::normal_distribution<> normalDist(0,1);
+        float res = normalDist(*mt);
         return res;
     }
 
@@ -121,15 +131,29 @@ public:
 
     Point(int _N) : N(_N), label(-1) { }
 
+    float length() const
+    {
+        return *inner_product(components.begin(), components.end(), components.begin(), components.end());
+    }
+
 
     // XXX: Who deletes this?
     static const Point *mkRandomPoint(int N)
     {
         Point *newPoint = new Point(N);
         for (int i = 0; i < N; i++) {
+            #ifdef EXP1
             float value = UnifGen::getUnifNum();
+            #elif EXP2
+            float value = UnifGen::getNormalNum();
+            #endif
             newPoint->components.push_back(value);  // XXX: Should be arbitrary random function here (instead of unif. only)
         }
+
+        #ifdef EXP2
+        // Normalize value
+
+        #endif
 
         newPoint->label = (UnifGen::getUnifNum() < .5);
 
@@ -245,6 +269,12 @@ class RandomPointSet
 
         }
     */
+    }
+
+    ~RandomPointSet()
+    {
+        for (const Point *p : points)
+            delete p;
     }
 
     const Point &getClosestPoint(const Point &p, DistanceType distType) const
