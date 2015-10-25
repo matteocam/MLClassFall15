@@ -11,7 +11,7 @@
 #include <random>
 using namespace std;
 
-#define EXP1
+#define EXP2
 
 
 mt19937 *mt;
@@ -136,6 +136,14 @@ public:
         return *inner_product(components.begin(), components.end(), components.begin(), components.end());
     }
 
+    void normalize()
+    {
+        float len = length();
+        for (int i = 0; i < N; i++) {
+            components[i] /= len;
+        }
+    }
+
 
     // XXX: Who deletes this?
     static const Point *mkRandomPoint(int N)
@@ -144,10 +152,11 @@ public:
         for (int i = 0; i < N; i++) {
             #ifdef EXP1
             float value = UnifGen::getUnifNum();
-            #elif EXP2
+            #endif
+            #ifdef EXP2
             float value = UnifGen::getNormalNum();
             #endif
-            newPoint->components.push_back(value);  // XXX: Should be arbitrary random function here (instead of unif. only)
+            newPoint->components.push_back(value);
         }
 
         #ifdef EXP2
@@ -417,9 +426,9 @@ public:
         vector<int> Ks;
         Ks.push_back(1000);
         //Ks.push_back(2000);
-        //Ks.push_back(5000);
-        //Ks.push_back(10000);
-        //Ks.push_back(20000);
+        Ks.push_back(5000);
+        Ks.push_back(10000);
+        Ks.push_back(20000);
         //Ks.push_back(1000);
         vector<DistanceType> distanceTypes;
         distanceTypes.push_back(DistanceType::Euclidean);
@@ -428,7 +437,12 @@ public:
         // XXX: Set them up
 
         // Set logging file
+        #ifdef EXP1
         string fn = "exp1-analysis.dat";
+        #endif
+        #ifdef EXP2
+        string fn = "exp2-analysis.dat";
+        #endif
         ofstream out(fn);
         out << Observation::header();
 
