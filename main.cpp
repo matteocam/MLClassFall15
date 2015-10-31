@@ -152,7 +152,7 @@ public:
 
         for (int i = 0; i < N; i++) {
             float epsilon = normalDist(*mt);
-            newPt->components[i] = components[i] +  epsilon;
+            newPt->components.push_back(components[i] +  epsilon);
         }
 
         return newPt;
@@ -545,9 +545,9 @@ public:
         // Find the closest point
         Y1->assignFrom(X);
 
-        cout << "X:\n" << X;
-        cout << "Y:\n" << Y;
-        cout << "Y1:\n" << Y1;
+        cout << "X:\n" << *X;
+        cout << "Y:\n" << *Y;
+        cout << "Y1:\n" << *Y1;
 
     }
 
