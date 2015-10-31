@@ -11,7 +11,8 @@
 #include <random>
 using namespace std;
 
-#define EXP2
+// To use uniformly generated points
+#define EXP1
 
 
 mt19937 *mt;
@@ -142,6 +143,19 @@ public:
         for (int i = 0; i < N; i++) {
             components[i] /= len;
         }
+    }
+
+    const Point *getPerturbedPoint(float sigma) const
+    {
+        Point *newPt = new Point(N);
+        std::normal_distribution<> normalDist(0,sigma);
+
+        for (int i = 0; i < N; i++) {
+            float epsilon = normalDist(*mt);
+            newPt->components[i] = components[i] +  epsilon;
+        }
+
+        return newPt;
     }
 
 
@@ -327,6 +341,25 @@ class RandomPointSet
         return points;
     }
 
+    RandomPointSet *mkPerturbedSet(float sigma)
+    {
+        auto newSet = new RandomPointSet(K, N);
+        for (int i = 0; i < K; i++) {
+            delete newSet->points[i];
+            newSet->points[i] = points[i]->getPerturbedPoint(sigma);
+        }
+        return newSet;
+    }
+
+    void assignFrom(RandomPointSet *classSource)
+    {
+        for (const Point *pt : points)
+        {
+            auto closestPoint = classSource->getClosestPoint(*pt, DistanceType::Euclidean);
+            const_cast<Point *>(pt)->label = closestPoint.label;
+        }
+    }
+
 };
 
 ostream& operator<<(ostream& os, const RandomPointSet& ptSet)
@@ -482,6 +515,56 @@ public:
 
 };
 
+class ClassificationSimulation
+{
+private:
+    RandomPointSet *X = nullptr;
+    RandomPointSet *Y = nullptr;
+    RandomPointSet *Y1 = nullptr;
+
+public:
+    int K, N;
+    ofstream &out;
+
+    // NOTE: At some point you may want to variate on K and N and distance function
+    ClassificationSimulation(int _K, int _N, ofstream &_out) :
+        K(_K), N(_N), out(_out)
+    {
+        // Make X set
+        X = new RandomPointSet(K, N);
+
+        // Make Y Set
+        Y = new RandomPointSet(K, N);
+        // Find class of y from x
+        Y->assignFrom(X);
+
+        // Perturb Y
+        float sigma = .1; // XXX: Generalize
+        Y1 = Y->mkPerturbedSet(sigma);
+
+        // Find the closest point
+        Y1->assignFrom(X);
+
+        cout << "X:\n" << X;
+        cout << "Y:\n" << Y;
+        cout << "Y1:\n" << Y1;
+
+    }
+
+    ~ClassificationSimulation()
+    {
+        delete X;
+        delete Y;
+        delete Y1;
+    }
+
+    void gatherObservations()
+    {
+        // Compare classes in Y and Y1
+    }
+
+};
+
 int Exp1Simulation::stdSeed0, Exp1Simulation::stdSeed1;
 
 int main(int argc, char **argv)
@@ -495,7 +578,10 @@ int main(int argc, char **argv)
     cout << setprecision(4);
 
     // Set seed
-    Exp1Simulation::runFullExperiment();
+    ofstream out("dump");
+    ClassificationSimulation sim(1, 2, out);
+    sim.gatherObservations();
+    //ClassificationSimulation::runFullExperiment();
 
     return 0;
 }
