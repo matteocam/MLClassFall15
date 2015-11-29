@@ -11,9 +11,13 @@
 #include <random>
 using namespace std;
 
-// To use uniformly generated points
-#define EXP1
+// To use uniformly/normally generated points (EXP1/EXP2)
+#define EXP2
+// To do classification
+//#define CLASS_EXP
 
+// Fractional Distance only
+#define FRAC_DIST
 
 mt19937 *mt;
 
@@ -69,7 +73,8 @@ enum DistanceType
 {
     Euclidean,
     CityBlock,
-    Max
+    Max,
+    Fractional
 };
 
 string distanceType2str(DistanceType dt)
@@ -85,6 +90,8 @@ string distanceType2str(DistanceType dt)
         case DistanceType::Max:
             return "Max";
             break;
+        case DistanceType::Fractional:
+            return "Fractional";
         default:
             assert(0);
 
@@ -134,15 +141,25 @@ public:
 
     float length() const
     {
-        return *inner_product(components.begin(), components.end(), components.begin(), components.end());
+        if (N > 1) { // Something wrong here
+          int i;
+          float sumSquares = 0.0;
+          for (i = 0; i < N; i++)
+            sumSquares += components[i]*components[i];
+          return sqrt(sumSquares);
+        } else
+          return components[0];
     }
 
     void normalize()
     {
         float len = length();
+        //cout << *this << endl;
+        //cout << "Dividing by " << len << endl;
         for (int i = 0; i < N; i++) {
             components[i] /= len;
         }
+        //cout << "NewLength = " << length() << endl;
     }
 
     const Point *getPerturbedPoint(float sigma) const
@@ -173,9 +190,11 @@ public:
             newPoint->components.push_back(value);
         }
 
+        #ifndef CLASS_EXP
         #ifdef EXP2
         // Normalize value
-
+        newPoint->normalize();
+        #endif
         #endif
 
         newPoint->label = (UnifGen::getUnifNum() < .5);
@@ -194,6 +213,9 @@ public:
                 break;
             case DistanceType::Max:
                 return getMaxDistance(p);
+                break;
+            case DistanceType::Fractional:
+                return getFractionalDistance(p);
                 break;
             default:
                 assert(0); // You should never get here
@@ -232,6 +254,19 @@ public:
         float maxDiff = *max_element(absDiffs.begin(), absDiffs.end());
         return maxDiff;
 
+    }
+
+
+    float getFractionalDistance(const Point &pt) const
+    {
+        const float p = 1.0/3.0;
+        float sumOfPowDiffs = 0.0;
+        for (int i = 0; i < N; i++)
+        {
+            sumOfPowDiffs += pow(fabs(components[i]-pt.components[i]), p);
+            //cout << components[i] << " " << pt.components[i] << " -> " << sumOfPowDiffs << endl;
+        }
+        return sumOfPowDiffs;  // NOTE: It could be raised to the 1/p
     }
 
 };
@@ -305,14 +340,23 @@ class RandomPointSet
         // For all points different from p, save point and distance in a pair and then grab the min
         vector<pair<float, const Point *>> distancePoints;
 
+        int nEqualPoints = 0;
+
         // XXX: How do we check that it's not the same point? (we check for equality)
         for (const Point *p1 : points) {
             if (*p1 == p) {
                 // Do nothing
+                nEqualPoints++;
             } else {
                 distancePoints.push_back(make_pair(p.getDistance(*p1, distType), p1));
             }
         }
+
+        // Sanity check if we have normalization
+        if (distancePoints.empty())
+          return p;
+
+        // cout << "I stumbled upon " << nEqualPoints << " equal points\n";
 
         auto closestPoint = *min_element(distancePoints.begin(),distancePoints.end());
         return *closestPoint.second;
@@ -331,6 +375,9 @@ class RandomPointSet
                 distancePoints.push_back(make_pair(p.getDistance(*p1, distType), p1));
             }
         }
+
+        if (distancePoints.empty())
+          return p;
 
         auto farthestPoint = *max_element(distancePoints.begin(),distancePoints.end());
         return *farthestPoint.second;
@@ -358,6 +405,11 @@ class RandomPointSet
             auto closestPoint = classSource->getClosestPoint(*pt, DistanceType::Euclidean);
             const_cast<Point *>(pt)->label = closestPoint.label;
         }
+    }
+
+    int getLabel(int i) const
+    {
+        return points[i]->label;
     }
 
 };
@@ -437,7 +489,9 @@ public:
             float distClosest = pPoint->getDistance(closestPoint, distType);
             float distFarthest = pPoint->getDistance(farthestPoint, distType);
 
-            out << Observation(K, N, distType, distClosest / distFarthest);
+            float r = (distFarthest > 0 ? distClosest / distFarthest : 0.0);
+
+            out << Observation(K, N, distType, r);
             //sumDists += (distClosest / distFarthest);
         }
         //return sumDists / pointSet->getK();
@@ -457,16 +511,20 @@ public:
         // Setup sets of variables
         // K, DistanceType
         vector<int> Ks;
-        Ks.push_back(1000);
+        //Ks.push_back(1000);
         //Ks.push_back(2000);
-        Ks.push_back(5000);
-        Ks.push_back(10000);
+        //Ks.push_back(5000);
+        //Ks.push_back(10000);
         Ks.push_back(20000);
         //Ks.push_back(1000);
         vector<DistanceType> distanceTypes;
+        #ifdef FRAC_DIST
+        distanceTypes.push_back(DistanceType::Fractional);
+        #else
         distanceTypes.push_back(DistanceType::Euclidean);
         distanceTypes.push_back(DistanceType::CityBlock);
         distanceTypes.push_back(DistanceType::Max);
+        #endif
         // XXX: Set them up
 
         // Set logging file
@@ -497,8 +555,14 @@ public:
 
         // Prepare Ns
         vector<int> Ns;
+        #ifndef FRAC_DIST
         for (int i = 1; i <= 10; i++)
             Ns.push_back(i);
+        #else
+        for (int i = 8; i <= 10; i++)
+            Ns.push_back(i);
+
+        #endif
         for (int i = 20; i <= 100; i += 10)
             Ns.push_back(i);
 
@@ -515,20 +579,59 @@ public:
 
 };
 
+struct ClassificationObservation
+{
+    int K,N;
+
+    float sigma;
+
+    int correctOnes;
+    int onesAsZeros;
+    int correctZeros;
+    int zerosAsOnes;
+
+
+
+    ClassificationObservation(int _K, int _N, float _sigma, int _correctOnes, int _onesAsZeros, int _correctZeros, int _zerosAsOnes) :
+        K(_K), N(_N), sigma(_sigma),
+        correctOnes(_correctOnes), onesAsZeros(_onesAsZeros), correctZeros(_correctZeros), zerosAsOnes(_zerosAsOnes)
+
+    {
+    }
+
+    static string header()
+    {
+        return "K\tN\tsigma\tcorrectOnes\tonesAsZeros\tcorrectZeros\tzerosAsOnes\n";
+    }
+
+    friend ostream& operator<<(ostream& os, const ClassificationObservation& obs);
+
+};
+
+ostream& operator<<(ostream& os, const ClassificationObservation& obs)
+{
+    os << obs.K << "\t" << obs.N << "\t"
+        << obs.sigma << "\t" << obs.correctOnes
+        << "\t" << obs.onesAsZeros << "\t" <<
+          obs.correctZeros << "\t" <<
+          obs.zerosAsOnes << endl;
+    return os;
+}
+
 class ClassificationSimulation
 {
 private:
+    int K, N;
+    float sigma;
     RandomPointSet *X = nullptr;
     RandomPointSet *Y = nullptr;
     RandomPointSet *Y1 = nullptr;
-
-public:
-    int K, N;
     ofstream &out;
 
-    // NOTE: At some point you may want to variate on K and N and distance function
-    ClassificationSimulation(int _K, int _N, ofstream &_out) :
-        K(_K), N(_N), out(_out)
+public:
+
+    ClassificationSimulation(int _K, int _N, float _sigma, ofstream &_out) :
+        K(_K), N(_N), sigma(_sigma), out(_out)
     {
         // Make X set
         X = new RandomPointSet(K, N);
@@ -539,7 +642,6 @@ public:
         Y->assignFrom(X);
 
         // Perturb Y
-        float sigma = .1; // XXX: Generalize
         Y1 = Y->mkPerturbedSet(sigma);
 
         // Find the closest point
@@ -558,9 +660,86 @@ public:
         delete Y1;
     }
 
+    static void runFullExperiment()
+    {
+        // Setup sets of variables
+        // K, DistanceType
+        vector<int> Ks;
+        Ks.push_back(1000);
+        //Ks.push_back(2000);
+        Ks.push_back(5000);
+        //Ks.push_back(10000);
+        //Ks.push_back(20000);
+
+        vector<float> sigmas;
+        sigmas.push_back(.1);
+        sigmas.push_back(.01);
+        // XXX: Set them up
+
+        // Set logging file
+        string fn = "exp-class-analysis.dat";
+
+        ofstream out(fn);
+        out << ClassificationObservation::header();
+
+        // Main Loop
+        for (int K : Ks) {
+            for (float sigma : sigmas) {
+                runOneExperiment(K, sigma, out);
+            }
+        }
+
+        out.close();
+
+    }
+
+    static void runOneExperiment(int K, float sigma, ofstream &out)
+    {
+        // Prepare Ns
+        vector<int> Ns;
+        for (int i = 1; i <= 10; i++)
+            Ns.push_back(i);
+        for (int i = 20; i <= 100; i += 10)
+            Ns.push_back(i);
+
+        // Produce and log results for each N
+        for (int N : Ns)
+        {
+            cout << "Working on experiment for K = " << K << ", N = "
+                 << N << " and sigma = " << sigma << endl;
+            ClassificationSimulation classSim(K, N, sigma, out);
+            classSim.gatherObservations();
+        }
+
+    }
+
     void gatherObservations()
     {
+        int oneClassifiedAsZero = 0;
+        int zeroClassifiedAsOne = 0;
+        int correctOnes = 0;
+        int correctZeros = 0;
         // Compare classes in Y and Y1
+        for (int i = 0; i < K; i++)
+        {
+            if (Y->getLabel(i) == 0)
+            {
+                if (Y1->getLabel(i) == 0)
+                    correctZeros++;
+                else
+                    zeroClassifiedAsOne++;
+            }
+
+            if (Y->getLabel(i) == 1)
+            {
+                if (Y1->getLabel(i) == 1)
+                    correctOnes++;
+                else
+                    oneClassifiedAsZero++;
+            }
+        }
+
+        out << ClassificationObservation(K, N, sigma, correctOnes, oneClassifiedAsZero, correctZeros, zeroClassifiedAsOne);
     }
 
 };
@@ -577,11 +756,14 @@ int main(int argc, char **argv)
     cout << fixed;
     cout << setprecision(4);
 
-    // Set seed
-    ofstream out("dump");
-    ClassificationSimulation sim(1, 2, out);
-    sim.gatherObservations();
-    //ClassificationSimulation::runFullExperiment();
+    //cout << pow(0.156, 1.0/3.0) << endl;
+    //return 0;
+
+    #ifdef CLASS_EXP
+      ClassificationSimulation::runFullExperiment();
+    #else
+      Exp1Simulation::runFullExperiment();
+    #endif
 
     return 0;
 }

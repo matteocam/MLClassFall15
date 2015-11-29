@@ -46,10 +46,12 @@ summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
 
 # dataSum <- summarySE(data,measurevar = "r", groupvars = c("K", "DistanceType", "ND"))
 
-plotData <- function()
+
+# Potentially duplicate this code for plotData2
+plotDataGeneralized <- function(expName)
 {
   # Read file
-  data <- read.csv("~/Proiects/ML_exp1/good-analysis.dat", sep="")
+  data <- read.csv(paste("~/Proiects/ML_midterm/data/good-", expName, "-analysis.dat", sep=""), sep="")
   
   # Make Summary
   dataSum <- summarySE(data,measurevar = "r", groupvars = c("K", "DistanceType", "ND"))
@@ -62,22 +64,73 @@ plotData <- function()
       
       # Plot
       return (ggplot(dataSum1, aes(x=ND, y=r, colour=DistanceType, group = DistanceType)) + 
-                        geom_errorbar(aes(ymin=r-se, ymax=r+se), width=5.0) +
+                        geom_errorbar(aes(ymin=r-sd, ymax=r+sd), width=1.0) +
                         geom_line() +
                         geom_point() )
     }
     
     plot1000 <- mkPlot(1000)
-    ggsave("exp1-plot1000.pdf", width=9, height=5, dpi=150)
+    ggsave(paste(expName, "-plot1000.pdf",sep=""), width=9, height=5, dpi=150)
     
     plot5000 <- mkPlot(5000)
-    ggsave("exp1-plot5000.pdf", width=9, height=5, dpi=150)
+    ggsave(paste(expName, "-plot5000.pdf",sep=""), width=9, height=5, dpi=150)
     
     plot10000 <- mkPlot(10000)
-    ggsave("exp1-plot10000.pdf", width=9, height=5, dpi=150)
+    ggsave(paste(expName, "-plot10000.pdf",sep=""), width=9, height=5, dpi=150)
+    
+    plot20000 <- mkPlot(20000)
+    ggsave(paste(expName, "-plot20000.pdf",sep=""), width=9, height=5, dpi=150)
+    
     
     #library(gridExtra)
     #grid.arrange(plot1000, plot5000, plot10000, nrow=3)
     #ggsave("analysis.pdf", width=9, height=5, dpi=150)
+  
+}
+
+plotData1 <- function()
+{
+  plotDataGeneralized("exp1")  
+
+}
+
+plotData2 <- function()
+{
+  plotDataGeneralized("exp2")  
+  
+}
+
+
+
+plotDataClass <- function()
+{
+  # Read file
+  data <- read.csv("~/Proiects/ML_exp1/data/good-exp-class-analysis.dat", sep="")
+  
+  # Compute fraction of inaccurate results
+  ratioMiss <- (data$onesAsZeros + data$zerosAsOnes)/data$K
+  data$ratioMiss <- ratioMiss
+  
+  # Make Summary
+  dataSum <- summarySE(data,measurevar = "ratioMiss", groupvars = c("K", "sigma", "ND"))
+  
+  # Filter by K
+  
+  mkPlot <- function(KTarget)
+  {
+    dataSum1 <- dataSum[dataSum$K == KTarget,]
+    
+    # Plot
+    return (ggplot(dataSum1, aes(x=ND, y=ratioMiss, colour=sigma, group = sigma)) + 
+              #geom_errorbar(aes(ymin=ratioMiss-se, ymax=ratioMiss+se), width=5.0) +
+              geom_line() +
+              geom_point() )
+  }
+  
+  plot1000 <- mkPlot(1000)
+  ggsave(paste("expClass", "-plot1000.pdf",sep=""), width=9, height=5, dpi=150)
+  
+  plot5000 <- mkPlot(5000)
+  ggsave(paste("expClass", "-plot5000.pdf",sep=""), width=9, height=5, dpi=150)
   
 }
